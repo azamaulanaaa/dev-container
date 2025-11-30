@@ -18,4 +18,7 @@ RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/instal
 RUN echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.bashrc
 RUN echo "export HOMEBREW_NO_ENV_HINTS=1" >> ~/.bashrc
 
+RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
+  neovim 
+
 CMD ["tmux", "new-session", "-A", "-s", "dev"]
