@@ -32,6 +32,7 @@ RUN mkdir -p ~/.config/gitui \
   && curl -o .config/gitui/key_bindings.ron https://raw.githubusercontent.com/gitui-org/gitui/refs/heads/master/vim_style_key_config.ron
 
 RUN git config --global --add safe.directory *
+RUN git config --global core.editor nvim
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 CMD ["ttyd", "-W", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
