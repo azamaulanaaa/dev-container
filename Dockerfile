@@ -22,8 +22,10 @@ RUN echo "export HOMEBREW_NO_ENV_HINTS=1" >> ~/.bashrc
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
   neovim \
   fzf \
-  ripgrep 
+  ripgrep \
+  sorenisanerd/gotty/gotty
 
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 
-CMD ["tmux", "new-session", "-A", "-s", "dev"]
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+CMD ["gotty", "--permit-write", "tmux", "new", "-A", "-s", "gotty"]
