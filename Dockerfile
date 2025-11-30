@@ -16,5 +16,6 @@ WORKDIR /home/dev
 
 RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 RUN echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.bashrc
+RUN echo "export HOMEBREW_NO_ENV_HINTS=1" >> ~/.bashrc
 
 CMD ["tmux", "new-session", "-A", "-s", "dev"]
