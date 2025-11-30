@@ -35,4 +35,4 @@ RUN git config --global --add safe.directory *
 RUN git config --global core.editor nvim
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-CMD ["ttyd", "-W", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
+CMD ["ttyd", "-W", "-t", "titleFixed=dev-container", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
