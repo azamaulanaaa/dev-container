@@ -17,5 +17,12 @@
       "suffix": "",
       "dockerfile": "Dockerfile"
     }
+  ],
+  "derivatives": [
+    {
+      "name": "deno",
+      "suffix": "deno",
+      "dockerfile": "derivative/Dockerfile.deno"
+    }
   ]
 }
