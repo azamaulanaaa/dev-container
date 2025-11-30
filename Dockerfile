@@ -28,5 +28,7 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install -v \
 
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 
+RUN git config --global --add safe.directory *
+
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 CMD ["ttyd", "-W", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
