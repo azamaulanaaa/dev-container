@@ -20,6 +20,10 @@ RUN echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.bashr
 RUN echo "export HOMEBREW_NO_ENV_HINTS=1" >> ~/.bashrc
 
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
-  neovim 
+  neovim \
+  fzf \
+  ripgrep 
+
+RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 
 CMD ["tmux", "new-session", "-A", "-s", "dev"]
