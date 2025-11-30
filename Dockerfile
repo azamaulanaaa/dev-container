@@ -2,9 +2,11 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
   git \
-  tmux
+  tmux \
+  sudo
 
-RUN useradd -ms /bin/bash dev
+RUN useradd -ms /bin/bash dev \
+  && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER dev
 WORKDIR /home/dev
 
