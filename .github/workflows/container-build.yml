@@ -11,27 +11,100 @@ env:
   IMAGE_NAME: ${{ github.event.repository.name }}
 
 jobs:
+  # 1. PREP JOB: Reads config.json and generates dynamic matrix
+  prep-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      manifest-variants: ${{ steps.read-config.outputs.manifest-variants }}
+      build-matrix: ${{ steps.read-config.outputs.build-matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read config and generate build matrix
+        id: read-config
+        run: |
+          # --- Configuration ---
+          CONFIG_FILE=".github/workflows/config.json"
+
+          if [ ! -f $CONFIG_FILE ]; then
+            echo "Error: $CONFIG_FILE not found."
+            exit 1
+          fi
+
+          # Read config.json
+          FULL_CONFIG=$(cat $CONFIG_FILE)
+
+          # --- Dynamic Generation using jq ---
+
+          # 1. Generate BUILD_MATRIX (item-level)
+          # We iterate over .variants and .archs directly from the input JSON
+          BUILD_MATRIX=$(echo "$FULL_CONFIG" | jq -c -r '
+            [
+              .variants[] as $variant |
+              .archs[] as $arch |
+
+              # Calculate the variant suffix string first
+              (if $variant.suffix == "" then "" else ("-" + $variant.suffix) end) as $var_suf |
+
+              # Construct the object
+              $variant + {
+                "arch_suffix": ($var_suf + "-" + $arch.name),
+                "arch": $arch.name,
+                "runner": $arch.runner,
+                "platform": $arch.platform
+              }
+            ]
+          ')
+
+          # 2. Generate MANIFEST_VARIANTS (variant-level)
+          # Creates the list of suffixes needed for the final merge
+          MANIFEST_VARIANTS=$(echo "$FULL_CONFIG" | jq -c -r '
+            . as $root |
+            [
+              .variants[] |
+              . as $variant |
+
+              # 1. Calculate the Variant suffix (e.g., "" or "-debug")
+              (if $variant.suffix == "" then "" else ("-" + $variant.suffix) end) as $var_suf |
+
+              # 2. Output the object with a nested list of arch suffixes
+              $variant + {
+                "arch_suffixes": [
+                  $root.archs[] | ($var_suf + "-" + .name)
+                ]
+              }
+            ]
+          ')
+
+          # --- Set Outputs (Using Safe EOF Delimiter) ---
+          {
+            echo "manifest-variants<<EOF"
+            echo "$MANIFEST_VARIANTS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+          {
+            echo "build-matrix<<EOF"
+            echo "$BUILD_MATRIX"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+  # 2. BUILD JOB: Builds individual arch images
   build:
+    needs: [prep-matrix]
     permissions:
       contents: read
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-            platform: linux/amd64
-            suffix: ""
-            dockerfile: Dockerfile
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-            platform: linux/arm64
-            suffix: ""
-            dockerfile: Dockerfile
+        item: ${{ fromJson(needs.prep-matrix.outputs.build-matrix) }}
 
-    name: Build ${{ matrix.platform }} ${{ matrix.suffix }}
-    runs-on: ${{ matrix.runner }}
+    name: Build ${{ matrix.item.name }} (${{ matrix.item.arch }})
+    runs-on: ${{ matrix.item.runner }}
 
     steps:
       - name: Checkout
@@ -54,7 +127,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
             # Tags include the variant suffix and the architecture
-            type=semver,pattern={{version}},suffix=${{ matrix.suffix }}-${{ matrix.arch }}
+            type=semver,pattern={{version}},suffix=${{ matrix.item.suffix }}-${{ matrix.item.arch }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -67,17 +140,15 @@ jobs:
           file: ${{ matrix.dockerfile }}
 
   merge-manifests:
-    needs: [build]
+    needs: [prep-matrix, build]
     permissions:
       packages: write
       contents: read
 
     strategy:
+      fail-fast: false
       matrix:
-        variant:
-          - name: base
-            suffix: ""
-            arch_suffixes: ["-amd64", "-arm64"]
+        variant: ${{ fromJson(needs.prep-matrix.outputs.manifest-variants) }}
 
     name: Merge Manifest ${{ matrix.variant.name }}
     runs-on: ubuntu-latest
@@ -90,16 +161,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker Meta (Final Tags) - ${{ matrix.variant.name }}
+      - name: Prepare Tag Suffix
+        id: suffix
+        run: |
+          SUFFIX_RAW="${{ matrix.variant.suffix }}"
+          if [[ -z "$SUFFIX_RAW" ]]; then
+             echo "val=" >> $GITHUB_OUTPUT
+          else
+             echo "val=-$SUFFIX_RAW" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Docker Meta (Final Tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Creates tags like: v1.0.0, v1.0.0-alpine, v1, v1-alpine, etc.
-            type=semver,pattern={{version}},suffix=${{ matrix.variant.suffix }}
-            type=semver,pattern={{major}},suffix=${{ matrix.variant.suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{version}},suffix=${{ steps.suffix.outputs.val }}
+            type=semver,pattern={{major}},suffix=${{ steps.suffix.outputs.val }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ steps.suffix.outputs.val }}
 
       - name: Create and Push Manifest List
         run: |
@@ -112,6 +192,6 @@ jobs:
             IMAGES+="$REPO:$VERSION$ARCH_SUFFIX "
           done
 
-          # Create the manifest list using the final tags
-          echo "Creating manifest for images: $IMAGES"
-          docker buildx imagetools create -t ${{ steps.meta.outputs.tags }} $IMAGES
+          TARGET_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | awk '{print "-t " $0}' | xargs)
+
+          docker buildx imagetools create $TARGET_TAGS $IMAGES
