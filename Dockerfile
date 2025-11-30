@@ -24,9 +24,9 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install -v \
   neovim \
   fzf \
   ripgrep \
-  sorenisanerd/gotty/gotty
+  ttyd
 
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-CMD ["gotty", "--permit-write", "tmux", "new", "-A", "-s", "gotty"]
+CMD ["ttyd", "-W", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
