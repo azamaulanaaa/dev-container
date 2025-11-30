@@ -24,9 +24,12 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install -v \
   neovim \
   fzf \
   ripgrep \
+  gitui \
   ttyd
 
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
+RUN mkdir -p ~/.config/gitui \
+  && curl -o .config/gitui/key_bindings.ron https://raw.githubusercontent.com/gitui-org/gitui/refs/heads/master/vim_style_key_config.ron
 
 RUN git config --global --add safe.directory *
 
