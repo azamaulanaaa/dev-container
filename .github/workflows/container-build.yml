@@ -11,12 +11,11 @@ env:
   IMAGE_NAME: ${{ github.event.repository.name }}
 
 jobs:
-  # 1. PREP JOB: Reads config.json and generates dynamic matrix
   prep-matrix:
     runs-on: ubuntu-latest
     outputs:
+      build-variants: ${{ steps.read-config.outputs.build-variants }}
       manifest-variants: ${{ steps.read-config.outputs.manifest-variants }}
-      build-matrix: ${{ steps.read-config.outputs.build-matrix }}
 
     steps:
       - name: Checkout
@@ -25,22 +24,16 @@ jobs:
       - name: Read config and generate build matrix
         id: read-config
         run: |
-          # --- Configuration ---
           CONFIG_FILE=".github/workflows/config.json"
 
           if [ ! -f $CONFIG_FILE ]; then
             echo "Error: $CONFIG_FILE not found."
             exit 1
           fi
-
-          # Read config.json
           FULL_CONFIG=$(cat $CONFIG_FILE)
 
-          # --- Dynamic Generation using jq ---
 
-          # 1. Generate BUILD_MATRIX (item-level)
-          # We iterate over .variants and .archs directly from the input JSON
-          BUILD_MATRIX=$(echo "$FULL_CONFIG" | jq -c -r '
+          BUILD_VARIANTS=$(echo "$FULL_CONFIG" | jq -c -r '
             [
               .variants[] as $variant |
               .archs[] as $arch |
@@ -52,8 +45,6 @@ jobs:
             ]
           ')
 
-          # 2. Generate MANIFEST_VARIANTS (variant-level)
-          # Creates the list of suffixes needed for the final merge
           MANIFEST_VARIANTS=$(echo "$FULL_CONFIG" | jq -c -r '
             . as $root |
             [
@@ -65,20 +56,18 @@ jobs:
             ]
           ')
 
-          # --- Set Outputs (Using Safe EOF Delimiter) ---
+          {
+            echo "build-variants<<EOF"
+            echo "$BUILD_VARIANTS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
           {
             echo "manifest-variants<<EOF"
             echo "$MANIFEST_VARIANTS"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-          {
-            echo "build-matrix<<EOF"
-            echo "$BUILD_MATRIX"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-
-  # 2. BUILD JOB: Builds individual arch images
   build:
     needs: [prep-matrix]
     permissions:
@@ -88,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        item: ${{ fromJson(needs.prep-matrix.outputs.build-matrix) }}
+        item: ${{ fromJson(needs.prep-matrix.outputs.build-variants) }}
 
     name: Build ${{ matrix.item.name }}
     runs-on: ${{ matrix.item.runner }}
