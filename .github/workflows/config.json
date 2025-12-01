@@ -20,6 +20,11 @@
       "name": "deno",
       "variants": ["base"],
       "dockerfile": "derivative/Dockerfile.deno"
+    },
+    {
+      "name": "rust",
+      "variants": ["base"],
+      "dockerfile": "derivative/Dockerfile.rust"
     }
   ]
 }

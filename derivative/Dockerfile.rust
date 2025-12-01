@@ -1,0 +1,7 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
+  rustup
+RUN echo 'export PATH="/home/linuxbrew/.linuxbrew/opt/rustup/bin:$PATH"' >> ~/.profile
+RUN rustup default stable
