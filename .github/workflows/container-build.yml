@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build-variants: ${{ steps.read-config.outputs.build-variants }}
-      manifest-variants: ${{ steps.read-config.outputs.manifest-variants }}
+      build-derivatives: ${{ steps.read-config.outputs.build-derivatives }}
+      all-manifest: ${{ steps.read-config.outputs.all-manifest }}
 
     steps:
       - name: Checkout
@@ -45,6 +46,21 @@ jobs:
             ]
           ')
 
+          BUILD_DERIVATIVES=$(echo "$FULL_CONFIG" | jq -c -r '
+            . as $root |
+            [
+              .derivatives[] as $derivative |
+              .archs[] as $arch |
+              $derivative.variants[] as $variant |
+              {
+                "name": [$variant, $derivative.name, $arch.name] | join("-"),
+                "variant": $variant,
+                "dockerfile": $derivative.dockerfile,
+                "runner": $arch.runner,
+              }
+            ]
+          ')
+
           MANIFEST_VARIANTS=$(echo "$FULL_CONFIG" | jq -c -r '
             . as $root |
             [
@@ -56,6 +72,21 @@ jobs:
             ]
           ')
 
+          MANIFEST_DERIVATIVES=$(echo "$FULL_CONFIG" | jq -c -r '
+            . as $root |
+            [
+              .derivatives[] as $derivative |
+              $derivative.variants[] as $variant|
+              {
+                "name": [$variant, $derivative.name] | join("-"),
+                "arch": [$root.archs[] | .name],
+              }
+            ]
+          ')
+
+          ALL_MANIFEST=$(echo "[$MANIFEST_VARIANTS,$MANIFEST_DERIVATIVES]" \
+            | jq -c '[.[] | .[]]')
+
           {
             echo "build-variants<<EOF"
             echo "$BUILD_VARIANTS"
@@ -63,12 +94,18 @@ jobs:
           } >> $GITHUB_OUTPUT
 
           {
-            echo "manifest-variants<<EOF"
-            echo "$MANIFEST_VARIANTS"
+            echo "build-derivatives<<EOF"
+            echo "$BUILD_DERIVATIVES"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-  build:
+          {
+            echo "all-manifest<<EOF"
+            echo "$ALL_MANIFEST"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+  build-variants:
     needs: [prep-matrix]
     permissions:
       contents: read
@@ -114,8 +151,68 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           file: ${{ matrix.item.dockerfile }}
 
+  build-derivatives:
+    needs: [prep-matrix, build-variants]
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        item: ${{ fromJson(needs.prep-matrix.outputs.build-derivatives) }}
+
+    name: Build ${{ matrix.item.name }}
+    runs-on: ${{ matrix.item.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Tags include the variant suffix and the architecture
+            type=semver,pattern={{version}},suffix=-${{ matrix.item.name }}
+
+      - name: Construct Base Image
+        id: base_meta
+        run: |
+          RAW_VERSION="${{ steps.meta.outputs.version }}"
+          REMOVE_PART="-${{ matrix.item.name }}"
+
+          CLEAN_VERSION="${RAW_VERSION/$REMOVE_PART/}"
+
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}:${CLEAN_VERSION}-${{ matrix.item.variant }}"
+
+          echo "base_image=$BASE_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: ${{ matrix.item.dockerfile }}
+          build-args: |
+            BASE_IMAGE=${{ steps.base_meta.outputs.base_image }}
+
   merge-manifests:
-    needs: [prep-matrix, build]
+    needs: [prep-matrix, build-variants, build-derivatives]
     permissions:
       packages: write
       contents: read
@@ -123,9 +220,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJson(needs.prep-matrix.outputs.manifest-variants) }}
+        item: ${{ fromJson(needs.prep-matrix.outputs.all-manifest) }}
 
-    name: Merge Manifest ${{ matrix.variant.name }}
+    name: Merge Manifest ${{ matrix.item.name }}
     runs-on: ubuntu-latest
 
     steps:
@@ -142,18 +239,18 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},suffix=-${{ matrix.variant.name }}
-            type=semver,pattern={{major}},suffix=-${{ matrix.variant.name }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.variant.name }}
-            type=raw,value=${{ matrix.variant.name }}
-            type=raw,value=latest,enable=${{ matrix.variant.name == 'base' }}
+            type=semver,pattern={{version}},suffix=-${{ matrix.item.name }}
+            type=semver,pattern={{major}},suffix=-${{ matrix.item.name }}
+            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.item.name }}
+            type=raw,value=${{ matrix.item.name }}
+            type=raw,value=latest,enable=${{ matrix.item.name == 'base' }}
 
       - name: Create and Push Manifest List
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           REPO="${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}"
 
-          ARCH_STRING="${{ join(matrix.variant.arch, ' ') }}"
+          ARCH_STRING="${{ join(matrix.item.arch, ' ') }}"
           IMAGES=""
           for ARCH in $ARCH_STRING; do
             IMAGES+="$REPO:$VERSION-$ARCH "
