@@ -57,17 +57,10 @@ jobs:
           MANIFEST_VARIANTS=$(echo "$FULL_CONFIG" | jq -c -r '
             . as $root |
             [
-              .variants[] |
-              . as $variant |
-
-              # 1. Calculate the Variant suffix (e.g., "" or "-debug")
-              (if $variant.suffix == "" then "" else ("-" + $variant.suffix) end) as $var_suf |
-
-              # 2. Output the object with a nested list of arch suffixes
-              $variant + {
-                "arch_suffixes": [
-                  $root.archs[] | ($var_suf + "-" + .name)
-                ]
+              .variants[] as $variant|
+              {
+                "name": $variant.name,
+                "arch": [$root.archs[] | .name],
               }
             ]
           ')
@@ -154,35 +147,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare Tag Suffix
-        id: suffix
-        run: |
-          SUFFIX_RAW="${{ matrix.variant.suffix }}"
-          if [[ -z "$SUFFIX_RAW" ]]; then
-             echo "val=" >> $GITHUB_OUTPUT
-          else
-             echo "val=-$SUFFIX_RAW" >> $GITHUB_OUTPUT
-          fi
-
       - name: Docker Meta (Final Tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ steps.suffix.outputs.val }}
-            type=semver,pattern={{major}},suffix=${{ steps.suffix.outputs.val }}
-            type=semver,pattern={{major}}.{{minor}},suffix=${{ steps.suffix.outputs.val }}
+            type=semver,pattern={{version}},suffix=-${{ matrix.variant.name }}
+            type=semver,pattern={{major}},suffix=-${{ matrix.variant.name }}
+            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.variant.name }}
 
       - name: Create and Push Manifest List
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           REPO="${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}"
 
-          ARCH_SUFFIXES_STRING="${{ join(matrix.variant.arch_suffixes, ' ') }}"
+          ARCH_STRING="${{ join(matrix.variant.arch, ' ') }}"
           IMAGES=""
-          for ARCH_SUFFIX in $ARCH_SUFFIXES_STRING; do
-            IMAGES+="$REPO:$VERSION$ARCH_SUFFIX "
+          for ARCH in $ARCH_STRING; do
+            IMAGES+="$REPO:$VERSION-$ARCH "
           done
 
           TARGET_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | awk '{print "-t " $0}' | xargs)
