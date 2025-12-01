@@ -157,6 +157,7 @@ jobs:
             type=semver,pattern={{major}},suffix=-${{ matrix.variant.name }}
             type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.variant.name }}
             type=raw,value=${{ matrix.variant.name }}
+            type=raw,value=latest,enable=${{ matrix.variant.name == 'base' }}
 
       - name: Create and Push Manifest List
         run: |
