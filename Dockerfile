@@ -20,7 +20,7 @@ RUN echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.bashr
 ENV HOMEBREW_NO_ENV_HINTS=1
 ENV HOMEBREW_FORCE_BOTTLE=1
 
-RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install -v \
+RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
   neovim \
   fzf \
   ripgrep \
