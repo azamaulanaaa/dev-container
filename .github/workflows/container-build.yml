@@ -150,6 +150,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: ${{ matrix.item.dockerfile }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   build-derivatives:
     needs: [prep-matrix, build-variants]
@@ -208,6 +210,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: ${{ matrix.item.dockerfile }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             BASE_IMAGE=${{ steps.base_meta.outputs.base_image }}
 
