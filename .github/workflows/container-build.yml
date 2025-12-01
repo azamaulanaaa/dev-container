@@ -136,8 +136,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ matrix.platform }}
-          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.item.platform }}
+          file: ${{ matrix.item.dockerfile }}
 
   merge-manifests:
     needs: [prep-matrix, build]
