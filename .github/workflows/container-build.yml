@@ -44,16 +44,10 @@ jobs:
             [
               .variants[] as $variant |
               .archs[] as $arch |
-
-              # Calculate the variant suffix string first
-              (if $variant.suffix == "" then "" else ("-" + $variant.suffix) end) as $var_suf |
-
-              # Construct the object
-              $variant + {
-                "arch_suffix": ($var_suf + "-" + $arch.name),
-                "arch": $arch.name,
+              {
+                "name": [$variant.name, $arch.name] | join("-"),
+                "dockerfile": $variant.dockerfile,
                 "runner": $arch.runner,
-                "platform": $arch.platform
               }
             ]
           ')
@@ -103,7 +97,7 @@ jobs:
       matrix:
         item: ${{ fromJson(needs.prep-matrix.outputs.build-matrix) }}
 
-    name: Build ${{ matrix.item.name }} (${{ matrix.item.arch }})
+    name: Build ${{ matrix.item.name }}
     runs-on: ${{ matrix.item.runner }}
 
     steps:
@@ -127,7 +121,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
           tags: |
             # Tags include the variant suffix and the architecture
-            type=semver,pattern={{version}},suffix=${{ matrix.item.suffix }}-${{ matrix.item.arch }}
+            type=semver,pattern={{version}},suffix=-${{ matrix.item.name }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -136,7 +130,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ matrix.item.platform }}
           file: ${{ matrix.item.dockerfile }}
 
   merge-manifests:
