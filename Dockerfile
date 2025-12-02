@@ -11,6 +11,7 @@ RUN make CMAKE_BUILD_TYPE=RelWithDebInfo \
     CMAKE_INSTALL_PREFIX=/opt/nvim install
 
 FROM debian:bookworm-slim
+ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y \
   git \
@@ -23,8 +24,6 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder-neovim /opt/nvim /opt/nvim
 
-ARG TARGETARCH
-
 ADD https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TARGETARCH} /usr/local/bin/ttyd
 RUN chmod +x /usr/local/bin/ttyd
 
@@ -36,12 +35,14 @@ RUN useradd -ms /bin/bash dev \
 USER dev
 WORKDIR /home/dev
 
-RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
-RUN mkdir -p ~/.config/gitui \
-  && curl -o .config/gitui/key_bindings.ron https://raw.githubusercontent.com/gitui-org/gitui/refs/heads/master/vim_style_key_config.ron
+ENV PATH="/opt/nvim/bin:${PATH}"
 
 RUN git config --global --add safe.directory *
 RUN git config --global core.editor nvim
 
-ENV PATH="/opt/nvim/bin:${PATH}"
+RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
+
+RUN mkdir -p ~/.config/gitui \
+  && curl -o .config/gitui/key_bindings.ron https://raw.githubusercontent.com/gitui-org/gitui/refs/heads/master/vim_style_key_config.ron
+
 CMD ["ttyd", "-W", "-t", "titleFixed=dev-container", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
