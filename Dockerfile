@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim as builder-neovim
+FROM debian:bookworm-slim AS builder-neovim
   
 RUN apt-get update && apt-get install -y \
     ninja-build gettext cmake unzip curl build-essential git
