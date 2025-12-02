@@ -55,7 +55,7 @@ jobs:
               $derivative.variants[] as $variant |
               {
                 "name": [$variant, $derivative.name, $arch.name] | join("-"),
-                "variant": $variant,
+                "variant": [$variant, $arch.name] | join("-"),
                 "dockerfile": $derivative.dockerfile,
                 "runner": $arch.runner,
               }
