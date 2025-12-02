@@ -40,8 +40,9 @@ jobs:
               .archs[] as $arch |
               {
                 "name": [$variant.name, $arch.name] | join("-"),
-                "dockerfile": $variant.dockerfile,
+                "target_arch": $arch.target_arch,
                 "runner": $arch.runner,
+                "dockerfile": $variant.dockerfile,
               }
             ]
           ')
@@ -150,6 +151,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: ${{ matrix.item.dockerfile }}
+          build-args: |
+            TARGETARCH=${{ matrix.item.target_arch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
