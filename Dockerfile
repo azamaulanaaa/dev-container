@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder-neovim /opt/nvim /opt/nvim
+RUN ln -s /opt/nvim/bin/nvim /usr/local/bin/nvim
 
 ADD https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TARGETARCH} /usr/local/bin/ttyd
 RUN chmod +x /usr/local/bin/ttyd
@@ -34,8 +35,6 @@ RUN useradd -ms /bin/bash dev \
   && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER dev
 WORKDIR /home/dev
-
-ENV PATH="/opt/nvim/bin:${PATH}"
 
 RUN git config --global --add safe.directory *
 RUN git config --global core.editor nvim
