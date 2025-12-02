@@ -26,6 +26,10 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder-neovim /opt/nvim /opt/nvim
 
+ARG TARGETARCH
+ADD https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TARGETARCH} /usr/local/bin/ttyd
+RUN chmod +x /usr/local/bin/ttyd
+
 RUN useradd -ms /bin/bash dev \
   && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER dev
@@ -37,8 +41,7 @@ ENV HOMEBREW_NO_ENV_HINTS=1
 ENV HOMEBREW_FORCE_BOTTLE=1
 
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
-  gitui \
-  ttyd
+  gitui
 
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 RUN mkdir -p ~/.config/gitui \
