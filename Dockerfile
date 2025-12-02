@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
   file \
   procps \
   build-essential \
+  fzf \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder-neovim /opt/nvim /opt/nvim
@@ -35,7 +36,6 @@ ENV HOMEBREW_NO_ENV_HINTS=1
 ENV HOMEBREW_FORCE_BOTTLE=1
 
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install \
-  fzf \
   ripgrep \
   gitui \
   ttyd
