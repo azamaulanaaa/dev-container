@@ -1,5 +1,4 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install -v \
-  deno
+RUN curl -fsSL https://deno.land/install.sh | sh
