@@ -17,9 +17,6 @@ RUN apt-get update && apt-get install -y \
   tmux \
   sudo \
   curl \
-  file \
-  procps \
-  build-essential \
   fzf \
   ripgrep \
   && rm -rf /var/lib/apt/lists/*
@@ -39,11 +36,6 @@ RUN useradd -ms /bin/bash dev \
 USER dev
 WORKDIR /home/dev
 
-RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-RUN echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> ~/.bashrc
-ENV HOMEBREW_NO_ENV_HINTS=1
-ENV HOMEBREW_FORCE_BOTTLE=1
-
 RUN git clone -b personal --single-branch https://github.com/azamaulanaaa/nvim ~/.config/nvim 
 RUN mkdir -p ~/.config/gitui \
   && curl -o .config/gitui/key_bindings.ron https://raw.githubusercontent.com/gitui-org/gitui/refs/heads/master/vim_style_key_config.ron
@@ -51,5 +43,5 @@ RUN mkdir -p ~/.config/gitui \
 RUN git config --global --add safe.directory *
 RUN git config --global core.editor nvim
 
-ENV PATH="/opt/nvim/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+ENV PATH="/opt/nvim/bin:${PATH}"
 CMD ["ttyd", "-W", "-t", "titleFixed=dev-container", "-p", "8080", "tmux", "new", "-A", "-s", "ttyd"]
