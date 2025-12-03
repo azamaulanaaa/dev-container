@@ -32,6 +32,10 @@ RUN chmod +x /usr/local/bin/ttyd
 ADD https://github.com/extrawurst/gitui/releases/download/v0.27.0/gitui-linux-${TARGETARCH}.tar.gz /tmp/gitui.tar.gz
 RUN tar -xzf /tmp/gitui.tar.gz -C /usr/local/bin && rm /tmp/gitui.tar.gz
 
+COPY ./script/yank /usr/local/bin/yank
+RUN chmod +x /usr/local/bin/yank
+RUN ln -s /usr/local/bin/yank /usr/local/bin/clip.exe
+
 RUN useradd -ms /bin/bash dev \
   && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER dev
