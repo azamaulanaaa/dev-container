@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
   curl \
   fzf \
   ripgrep \
+  man \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder-neovim /opt/nvim /opt/nvim
