@@ -47,11 +47,52 @@ tmux_copy() {
   fi
 }
 
-main() {
-  input=$(read_input "$@")
+emulate_xsel() {
+  mode=$1
+  selection=$2
+  store="${TMPDIR:-/tmp}/.fake_xsel_${selection}"
 
-  osc52_copy "$input"
-  tmux_copy "$input"
+  case "$mode" in
+    input)
+      data=$(cat)
+      osc52_copy "$data"
+      tmux_copy "$data"
+      printf "%s" "$data" >"$store"
+      ;;
+    output)
+      cat "$store" 2>/dev/null || true
+      ;;
+    clear)
+      : >"$store"
+      ;;
+    append)
+      data=$(cat)
+      printf "%s" "$data" >>"$store"
+      ;;
+    *)
+      echo "Usage: $0 [--input|--output|--clear|--append] [--primary|--clipboard]" >&2
+      exit 1
+      ;;
+  esac
+}
+
+main() {
+  mode=input
+  selection=primary
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --input|-i) mode=input ;;
+      --output|-o) mode=output ;;
+      --primary|-p) selection=primary ;;
+      --clipboard|-b) selection=clipboard ;;
+      --clear) mode=clear ;;
+      --append|-a) mode=append ;;
+    esac
+    shift
+  done
+
+  emulate_xsel "$mode" "$selection"
 }
 
 main "$@"

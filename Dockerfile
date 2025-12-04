@@ -42,6 +42,7 @@ RUN tar -xvf /tmp/zig.tar.xz -C /tmp \
 COPY ./script/yank /usr/local/bin/yank
 RUN chmod +x /usr/local/bin/yank
 RUN ln -s /usr/local/bin/yank /usr/local/bin/clip.exe
+RUN ln -s /usr/local/bin/yank /usr/local/bin/xsel
 
 RUN useradd -ms /bin/bash dev \
   && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
