@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
   tmux \
   sudo \
   curl \
+  xz-utils \
   fzf \
   ripgrep \
   man \
@@ -31,6 +32,12 @@ RUN chmod +x /usr/local/bin/ttyd
 
 ADD https://github.com/extrawurst/gitui/releases/download/v0.27.0/gitui-linux-${TARGETARCH}.tar.gz /tmp/gitui.tar.gz
 RUN tar -xzf /tmp/gitui.tar.gz -C /usr/local/bin && rm /tmp/gitui.tar.gz
+
+ADD https://ziglang.org/download/0.15.2/zig-${TARGETARCH}-linux-0.15.2.tar.xz /tmp/zig.tar.xz
+RUN tar -xvf /tmp/zig.tar.xz -C /tmp \
+    && rm /tmp/zig.tar.xz \
+    && mv /tmp/zig-${TARGETARCH}-* /opt/zig \
+    && ln -s /opt/zig/zig /usr/local/bin/zig 
 
 COPY ./script/yank /usr/local/bin/yank
 RUN chmod +x /usr/local/bin/yank
