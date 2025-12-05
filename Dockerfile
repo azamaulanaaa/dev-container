@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder-neovim
+FROM debian:stable-slim AS builder-neovim
   
 RUN apt-get update && apt-get install -y \
     ninja-build gettext cmake unzip curl build-essential git
@@ -10,7 +10,7 @@ RUN git checkout stable
 RUN make CMAKE_BUILD_TYPE=RelWithDebInfo \
     CMAKE_INSTALL_PREFIX=/opt/nvim install
 
-FROM debian:bookworm-slim
+FROM debian:stable-slim
 ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y \
